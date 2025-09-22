@@ -34,7 +34,6 @@
 1. 安装依赖（如果尚未安装）：  
    ```bash
    pip install -r requirements.txt ```
-
 2.运行界面：
    ```bash
     python demo/enhanced_ui_demo.py \
