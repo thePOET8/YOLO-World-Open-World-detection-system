@@ -34,7 +34,7 @@
 1. 安装依赖（如果尚未安装）：  
    ```bash
    pip install -r requirements.txt ```
-2.运行界面：
+2. 运行界面：
    ```bash
     python demo/enhanced_ui_demo.py \
     configs/pretrain/yolo_world_v2_x_vlpan_bn_2e-3_100e_4x8gpus_obj365v1_goldg_train_lvis_minival.py \
