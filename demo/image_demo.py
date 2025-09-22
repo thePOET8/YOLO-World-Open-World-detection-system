@@ -14,7 +14,7 @@ from mmdet.utils import get_test_pipeline_cfg
 
 import supervision as sv
 
-BOUNDING_BOX_ANNOTATOR = sv.BoundingBoxAnnotator(thickness=1)
+BOUNDING_BOX_ANNOTATOR = sv.RoundBoxAnnotator(thickness=1)
 MASK_ANNOTATOR = sv.MaskAnnotator()
 
 
@@ -187,6 +187,17 @@ if __name__ == '__main__':
         with open(args.text) as f:
             lines = f.readlines()
         texts = [[t.rstrip('\r\n')] for t in lines] + [[' ']]
+    elif args.text.endswith('.json'):
+        import json
+        with open(args.text) as f:
+            texts = json.load(f)
+        # Pad all classes to the same length
+        max_len = max(len(class_prompts) for class_prompts in texts)
+        padded_texts = []
+        for class_prompts in texts:
+            padded_class = class_prompts + [' '] * (max_len - len(class_prompts))
+            padded_texts.append(padded_class)
+        texts = padded_texts + [[' ']]
     else:
         texts = [[t.strip()] for t in args.text.split(',')] + [[' ']]
 
