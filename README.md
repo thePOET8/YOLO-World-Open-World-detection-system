@@ -39,6 +39,4 @@
    ```bash
     python demo/enhanced_ui_demo.py \
     configs/pretrain/yolo_world_v2_x_vlpan_bn_2e-3_100e_4x8gpus_obj365v1_goldg_train_lvis_minival.py \
-    weights/yolo_world_v2_x_obj365v1_goldg_cc3mlite_pretrain_1280ft-14996a36.pth --share ``` 
-    
-3.添加图片进行检测，界面会显示检测结果并支持保存。
+    weights/yolo_world_v2_x_obj365v1_goldg_cc3mlite_pretrain_1280ft-14996a36.pth --share 
