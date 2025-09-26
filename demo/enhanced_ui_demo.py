@@ -8,7 +8,7 @@ from functools import partial
 import time
 import datetime
 import pathlib
-# ±ØĞëÔÚ import gradio Ç°ÉèÖÃ
+# å¿…é¡»åœ¨ import gradio å‰è®¾ç½®
 home_dir = os.path.expanduser("~")
 gradio_tmp = os.path.join(home_dir, "gradio_tmp")
 pathlib.Path(gradio_tmp).mkdir(parents=True, exist_ok=True)
@@ -28,7 +28,7 @@ from mmengine.config import Config, DictAction
 from mmdet.datasets import CocoDataset
 from mmyolo.registry import RUNNERS
 
-# ÉèÖÃ±ê×¢Æ÷
+# è®¾ç½®æ ‡æ³¨å™¨
 BOUNDING_BOX_ANNOTATOR = sv.BoundingBoxAnnotator(thickness=2)
 MASK_ANNOTATOR = sv.MaskAnnotator()
 
@@ -56,46 +56,46 @@ def parse_args():
     return parser.parse_args()
 
 def run_detection(runner, image, text, max_num_boxes, score_thr, nms_thr):
-    """ÔËĞĞÄ¿±ê¼ì²â"""
+    """è¿è¡Œç›®æ ‡æ£€æµ‹"""
     if image is None:
-        return None, "ÇëÏÈÉÏ´«Í¼Æ¬£¡"
+        return None, "è¯·å…ˆä¸Šä¼ å›¾ç‰‡ï¼"
     
     if not text.strip():
-        return None, "ÇëÊäÈëÒª¼ì²âµÄÎïÌåÀà±ğ£¡"
+        return None, "è¯·è¾“å…¥è¦æ£€æµ‹çš„ç‰©ä½“ç±»åˆ«ï¼"
     
     try:
-        # ´¦ÀíÎÄ±¾ÊäÈë
+        # å¤„ç†æ–‡æœ¬è¾“å…¥
         texts = [[t.strip()] for t in text.split(',')] + [[' ']]
         
-        # ×¼±¸Êı¾İ
+        # å‡†å¤‡æ•°æ®
         data_info = dict(img_id=0, img=np.array(image), texts=texts)
         data_info = runner.pipeline(data_info)
         data_batch = dict(inputs=data_info['inputs'].unsqueeze(0),
                           data_samples=[data_info['data_samples']])
 
-        # ÍÆÀí
+        # æ¨ç†
         with autocast(enabled=False), torch.no_grad():
             output = runner.model.test_step(data_batch)[0]
             pred_instances = output.pred_instances
 
-        # NMS´¦Àí
+        # NMSå¤„ç†
         keep = nms(pred_instances.bboxes,
                    pred_instances.scores,
                    iou_threshold=nms_thr)
         pred_instances = pred_instances[keep]
         pred_instances = pred_instances[pred_instances.scores.float() > score_thr]
 
-        # ÏŞÖÆ¼ì²â¿òÊıÁ¿
+        # é™åˆ¶æ£€æµ‹æ¡†æ•°é‡
         if len(pred_instances.scores) > max_num_boxes:
             indices = pred_instances.scores.float().topk(max_num_boxes)[1]
             pred_instances = pred_instances[indices]
 
         pred_instances = pred_instances.cpu().numpy()
         
-        # ´¦Àímasks
+        # å¤„ç†masks
         masks = pred_instances.get('masks', None)
         
-        # ´´½¨¼ì²â½á¹û
+        # åˆ›å»ºæ£€æµ‹ç»“æœ
         detections = sv.Detections(
             xyxy=pred_instances['bboxes'],
             class_id=pred_instances['labels'],
@@ -103,13 +103,13 @@ def run_detection(runner, image, text, max_num_boxes, score_thr, nms_thr):
             mask=masks
         )
         
-        # ´´½¨±êÇ©
+        # åˆ›å»ºæ ‡ç­¾
         labels = [
             f"{texts[class_id][0]} {confidence:0.2f}" 
             for class_id, confidence in zip(detections.class_id, detections.confidence)
         ]
 
-        # »æÖÆ½á¹û
+        # ç»˜åˆ¶ç»“æœ
         image = np.array(image)
         image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
         image = BOUNDING_BOX_ANNOTATOR.annotate(image, detections)
@@ -119,53 +119,53 @@ def run_detection(runner, image, text, max_num_boxes, score_thr, nms_thr):
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         result_image = Image.fromarray(image)
         
-        # Éú³É½á¹ûĞÅÏ¢
+        # ç”Ÿæˆç»“æœä¿¡æ¯
         num_detections = len(detections.confidence)
-        info = f"¼ì²âÍê³É£¡¹²·¢ÏÖ {num_detections} ¸öÄ¿±ê"
+        info = f"æ£€æµ‹å®Œæˆï¼å…±å‘ç° {num_detections} ä¸ªç›®æ ‡"
         
         return result_image, info
         
     except Exception as e:
-        return None, f"¼ì²âÊ§°Ü£º{str(e)}"
+        return None, f"æ£€æµ‹å¤±è´¥ï¼š{str(e)}"
 
 def set_preset_categories(category_type):
-    """ÉèÖÃÔ¤ÉèÀà±ğ"""
+    """è®¾ç½®é¢„è®¾ç±»åˆ«"""
     presets = {
-        "³£¼ûÎïÌå": "person, car, truck, bus, motorcycle, bicycle, dog, cat, bird, horse",
-        "¶¯Îï": "dog, cat, bird, horse, cow, sheep, elephant, bear, zebra, giraffe",
-        "½»Í¨¹¤¾ß": "car, truck, bus, motorcycle, bicycle, train, boat, airplane",
-        "ÈÕ³£ÓÃÆ·": "bottle, cup, fork, knife, spoon, bowl, banana, apple, sandwich, pizza",
-        "¼Ò¾ß": "chair, couch, bed, dining table, toilet, tv, laptop, mouse, remote, keyboard",
-        "ÌåÓıÓÃÆ·": "frisbee, skis, snowboard, sports ball, kite, baseball bat, baseball glove, skateboard, surfboard, tennis racket",
-        "°²È«Ã±¼ì²â": "helmet, head, person, worker, construction worker"
+        "å¸¸è§ç‰©ä½“": "person, car, truck, bus, motorcycle, bicycle, dog, cat, bird, horse",
+        "åŠ¨ç‰©": "dog, cat, bird, horse, cow, sheep, elephant, bear, zebra, giraffe",
+        "äº¤é€šå·¥å…·": "car, truck, bus, motorcycle, bicycle, train, boat, airplane",
+        "æ—¥å¸¸ç”¨å“": "bottle, cup, fork, knife, spoon, bowl, banana, apple, sandwich, pizza",
+        "å®¶å…·": "chair, couch, bed, dining table, toilet, tv, laptop, mouse, remote, keyboard",
+        "ä½“è‚²ç”¨å“": "frisbee, skis, snowboard, sports ball, kite, baseball bat, baseball glove, skateboard, surfboard, tennis racket",
+        "å®‰å…¨å¸½æ£€æµ‹": "helmet, head, person, worker, construction worker"
     }
     return presets.get(category_type, "")
 
 def clear_all():
-    """Çå¿ÕËùÓĞÄÚÈİ"""
-    return None, "", None, "ÒÑÇå¿ÕËùÓĞÄÚÈİ"
+    """æ¸…ç©ºæ‰€æœ‰å†…å®¹"""
+    return None, "", None, "å·²æ¸…ç©ºæ‰€æœ‰å†…å®¹"
 
 def save_result(image):
-    """±£´æ½á¹ûÍ¼Æ¬"""
+    """ä¿å­˜ç»“æœå›¾ç‰‡"""
     if image is None:
-        return None, "Ã»ÓĞ½á¹ûÍ¼Æ¬¿É±£´æ"
+        return None, "æ²¡æœ‰ç»“æœå›¾ç‰‡å¯ä¿å­˜"
     
-    # ´´½¨Êä³öÄ¿Â¼
+    # åˆ›å»ºè¾“å‡ºç›®å½•
     os.makedirs("output_images", exist_ok=True)
     
-    # Éú³ÉÎÄ¼şÃû
+    # ç”Ÿæˆæ–‡ä»¶å
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"detection_result_{timestamp}.jpg"
     filepath = os.path.join("output_images", filename)
     
-    # ±£´æÍ¼Æ¬
+    # ä¿å­˜å›¾ç‰‡
     image.save(filepath)
-    return filepath, f"Í¼Æ¬ÒÑ±£´æµ½: {filepath}"
+    return filepath, f"å›¾ç‰‡å·²ä¿å­˜åˆ°: {filepath}"
 
 def create_enhanced_ui(runner):
-    """´´½¨ÔöÇ¿°æUI½çÃæ"""
+    """åˆ›å»ºå¢å¼ºç‰ˆUIç•Œé¢"""
     
-    # ×Ô¶¨ÒåCSSÑùÊ½
+    # è‡ªå®šä¹‰CSSæ ·å¼
     css = """
     .gradio-container {
         font-family: 'Microsoft YaHei', Arial, sans-serif;
@@ -192,118 +192,118 @@ def create_enhanced_ui(runner):
     }
     """
     
-    with gr.Blocks(title="YOLO-World ÖÇÄÜÄ¿±ê¼ì²â", css=css, theme=gr.themes.Soft()) as demo:
+    with gr.Blocks(title="YOLO-World æ™ºèƒ½ç›®æ ‡æ£€æµ‹", css=css, theme=gr.themes.Soft()) as demo:
         
-        # ±êÌâ
+        # æ ‡é¢˜
         gr.HTML("""
         <div class="main-header">
-            <h1>?? YOLO-World ÖÇÄÜÄ¿±ê¼ì²âÏµÍ³</h1>
-            <p>ÉÏ´«Í¼Æ¬£¬ÊäÈëÏëÒª¼ì²âµÄÎïÌåÀà±ğ£¬¼´¿É»ñµÃ¼ì²â½á¹û</p>
+            <h1> YOLO-World æ™ºèƒ½ç›®æ ‡æ£€æµ‹ç³»ç»Ÿ</h1>
+            <p>ä¸Šä¼ å›¾ç‰‡ï¼Œè¾“å…¥æƒ³è¦æ£€æµ‹çš„ç‰©ä½“ç±»åˆ«ï¼Œå³å¯è·å¾—æ£€æµ‹ç»“æœ</p>
         </div>
         """)
         
         with gr.Row():
-            # ×ó²à¿ØÖÆÃæ°å
+            # å·¦ä¾§æ§åˆ¶é¢æ¿
             with gr.Column(scale=2, elem_classes="control-panel"):
-                gr.Markdown("### ?? Í¼Æ¬ÉÏ´«")
+                gr.Markdown("###  å›¾ç‰‡ä¸Šä¼ ")
                 input_image = gr.Image(
                     type='pil', 
-                    label="ÉÏ´«Í¼Æ¬", 
+                    label="ä¸Šä¼ å›¾ç‰‡", 
                     height=300,
                     interactive=True
                 )
                 
-                gr.Markdown("### ??? ¼ì²âÀà±ğÉèÖÃ")
+                gr.Markdown("###  æ£€æµ‹ç±»åˆ«è®¾ç½®")
                 
-                # Ô¤ÉèÀà±ğÑ¡Ôñ
+                # é¢„è®¾ç±»åˆ«é€‰æ‹©
                 category_type = gr.Dropdown(
-                    choices=["³£¼ûÎïÌå", "¶¯Îï", "½»Í¨¹¤¾ß", "ÈÕ³£ÓÃÆ·", "¼Ò¾ß", "ÌåÓıÓÃÆ·", "°²È«Ã±¼ì²â"],
-                    label="Ñ¡ÔñÔ¤ÉèÀà±ğ",
-                    value="³£¼ûÎïÌå"
+                    choices=["å¸¸è§ç‰©ä½“", "åŠ¨ç‰©", "äº¤é€šå·¥å…·", "æ—¥å¸¸ç”¨å“", "å®¶å…·", "ä½“è‚²ç”¨å“", "å®‰å…¨å¸½æ£€æµ‹"],
+                    label="é€‰æ‹©é¢„è®¾ç±»åˆ«",
+                    value="å¸¸è§ç‰©ä½“"
                 )
                 
-                # ÎÄ±¾ÊäÈë¿ò
+                # æ–‡æœ¬è¾“å…¥æ¡†
                 input_text = gr.Textbox(
                     lines=4,
-                    label="¼ì²âÀà±ğ (ÓÃ¶ººÅ·Ö¸ô)",
-                    placeholder="ÀıÈç: person, car, dog, cat",
+                    label="æ£€æµ‹ç±»åˆ« (ç”¨é€—å·åˆ†éš”)",
+                    placeholder="ä¾‹å¦‚: person, car, dog, cat",
                     value="person, car, truck, bus, motorcycle, bicycle"
                 )
                 
-                # Ô¤ÉèÀà±ğ°´Å¥
+                # é¢„è®¾ç±»åˆ«æŒ‰é’®
                 category_type.change(
                     fn=set_preset_categories,
                     inputs=[category_type],
                     outputs=[input_text]
                 )
                 
-                gr.Markdown("### ?? ¼ì²â²ÎÊı")
+                gr.Markdown("###  æ£€æµ‹å‚æ•°")
                 
                 with gr.Row():
                     max_num_boxes = gr.Slider(
                         minimum=1, maximum=100, value=50, step=1,
-                        label="×î´ó¼ì²â¿òÊıÁ¿"
+                        label="æœ€å¤§æ£€æµ‹æ¡†æ•°é‡"
                     )
                 
                 with gr.Row():
                     score_thr = gr.Slider(
                         minimum=0.01, maximum=1.0, value=0.3, step=0.01,
-                        label="ÖÃĞÅ¶ÈãĞÖµ"
+                        label="ç½®ä¿¡åº¦é˜ˆå€¼"
                     )
                     
                 with gr.Row():
                     nms_thr = gr.Slider(
                         minimum=0.1, maximum=1.0, value=0.7, step=0.01,
-                        label="NMSãĞÖµ"
+                        label="NMSé˜ˆå€¼"
                     )
                 
-                gr.Markdown("### ?? ²Ù×÷°´Å¥")
+                gr.Markdown("###  æ“ä½œæŒ‰é’®")
                 with gr.Row():
-                    detect_btn = gr.Button("?? ¿ªÊ¼¼ì²â", variant="primary", size="lg")
-                    clear_btn = gr.Button("??? Çå¿Õ", variant="secondary")
+                    detect_btn = gr.Button(" å¼€å§‹æ£€æµ‹", variant="primary", size="lg")
+                    clear_btn = gr.Button(" æ¸…ç©º", variant="secondary")
             
-            # ÓÒ²à½á¹ûÃæ°å
+            # å³ä¾§ç»“æœé¢æ¿
             with gr.Column(scale=3, elem_classes="result-panel"):
-                gr.Markdown("### ?? ¼ì²â½á¹û")
+                gr.Markdown("###  æ£€æµ‹ç»“æœ")
                 
                 output_image = gr.Image(
                     type='pil', 
-                    label="¼ì²â½á¹û", 
+                    label="æ£€æµ‹ç»“æœ", 
                     height=400,
                     interactive=False
                 )
                 
-                # ×´Ì¬ĞÅÏ¢
+                # çŠ¶æ€ä¿¡æ¯
                 status_info = gr.Textbox(
-                    label="×´Ì¬ĞÅÏ¢",
-                    value="ÇëÉÏ´«Í¼Æ¬²¢ÉèÖÃ¼ì²âÀà±ğ",
+                    label="çŠ¶æ€ä¿¡æ¯",
+                    value="è¯·ä¸Šä¼ å›¾ç‰‡å¹¶è®¾ç½®æ£€æµ‹ç±»åˆ«",
                     interactive=False
                 )
                 
-                # ±£´æ°´Å¥ºÍÏÂÔØ
+                # ä¿å­˜æŒ‰é’®å’Œä¸‹è½½
                 with gr.Row():
-                    save_btn = gr.Button("?? ±£´æ½á¹û", variant="secondary")
-                    download_file = gr.File(label="ÏÂÔØ½á¹û", visible=False)
+                    save_btn = gr.Button(" ä¿å­˜ç»“æœ", variant="secondary")
+                    download_file = gr.File(label="ä¸‹è½½ç»“æœ", visible=False)
         
-        # Ê¹ÓÃËµÃ÷
+        # ä½¿ç”¨è¯´æ˜
         gr.Markdown("""
-        ### ?? Ê¹ÓÃËµÃ÷
-        1. **ÉÏ´«Í¼Æ¬**: µã»÷Í¼Æ¬ÉÏ´«ÇøÓò£¬Ñ¡ÔñÒª¼ì²âµÄÍ¼Æ¬
-        2. **Ñ¡ÔñÀà±ğ**: ¿ÉÒÔ´ÓÔ¤ÉèÀà±ğÖĞÑ¡Ôñ£¬»òÕßÊÖ¶¯ÊäÈëÏëÒª¼ì²âµÄÎïÌåÀà±ğ£¨ÓÃ¶ººÅ·Ö¸ô£©
-        3. **µ÷Õû²ÎÊı**: ¸ù¾İĞèÒªµ÷Õû¼ì²â²ÎÊı
-           - **×î´ó¼ì²â¿òÊıÁ¿**: ÏŞÖÆÏÔÊ¾µÄ¼ì²â¿òÊıÁ¿
-           - **ÖÃĞÅ¶ÈãĞÖµ**: Ö»ÏÔÊ¾ÖÃĞÅ¶È¸ßÓÚ´ËÖµµÄ¼ì²â½á¹û
-           - **NMSãĞÖµ**: ÓÃÓÚÈ¥³ıÖØµşµÄ¼ì²â¿ò
-        4. **¿ªÊ¼¼ì²â**: µã»÷"¿ªÊ¼¼ì²â"°´Å¥»ñµÃ½á¹û
-        5. **±£´æ½á¹û**: ¿ÉÒÔ±£´æ¼ì²â½á¹ûÍ¼Æ¬
+        ###  ä½¿ç”¨è¯´æ˜
+        1. **ä¸Šä¼ å›¾ç‰‡**: ç‚¹å‡»å›¾ç‰‡ä¸Šä¼ åŒºåŸŸï¼Œé€‰æ‹©è¦æ£€æµ‹çš„å›¾ç‰‡
+        2. **é€‰æ‹©ç±»åˆ«**: å¯ä»¥ä»é¢„è®¾ç±»åˆ«ä¸­é€‰æ‹©ï¼Œæˆ–è€…æ‰‹åŠ¨è¾“å…¥æƒ³è¦æ£€æµ‹çš„ç‰©ä½“ç±»åˆ«ï¼ˆç”¨é€—å·åˆ†éš”ï¼‰
+        3. **è°ƒæ•´å‚æ•°**: æ ¹æ®éœ€è¦è°ƒæ•´æ£€æµ‹å‚æ•°
+           - **æœ€å¤§æ£€æµ‹æ¡†æ•°é‡**: é™åˆ¶æ˜¾ç¤ºçš„æ£€æµ‹æ¡†æ•°é‡
+           - **ç½®ä¿¡åº¦é˜ˆå€¼**: åªæ˜¾ç¤ºç½®ä¿¡åº¦é«˜äºæ­¤å€¼çš„æ£€æµ‹ç»“æœ
+           - **NMSé˜ˆå€¼**: ç”¨äºå»é™¤é‡å çš„æ£€æµ‹æ¡†
+        4. **å¼€å§‹æ£€æµ‹**: ç‚¹å‡»"å¼€å§‹æ£€æµ‹"æŒ‰é’®è·å¾—ç»“æœ
+        5. **ä¿å­˜ç»“æœ**: å¯ä»¥ä¿å­˜æ£€æµ‹ç»“æœå›¾ç‰‡
         
-        ### ?? ÌáÊ¾
-        - Ö§³Ö¼ì²âÈÎÒâÀà±ğµÄÎïÌå£¬Ö»ĞèÊäÈë¶ÔÓ¦µÄÓ¢ÎÄÃû³Æ
-        - ¿ÉÒÔÍ¬Ê±¼ì²â¶à¸öÀà±ğ£¬ÓÃ¶ººÅ·Ö¸ô
-        - ½¨ÒéÉÏ´«ÇåÎú¶È½Ï¸ßµÄÍ¼Æ¬ÒÔ»ñµÃ¸üºÃµÄ¼ì²âĞ§¹û
+        ###  æç¤º
+        - æ”¯æŒæ£€æµ‹ä»»æ„ç±»åˆ«çš„ç‰©ä½“ï¼Œåªéœ€è¾“å…¥å¯¹åº”çš„è‹±æ–‡åç§°
+        - å¯ä»¥åŒæ—¶æ£€æµ‹å¤šä¸ªç±»åˆ«ï¼Œç”¨é€—å·åˆ†éš”
+        - å»ºè®®ä¸Šä¼ æ¸…æ™°åº¦è¾ƒé«˜çš„å›¾ç‰‡ä»¥è·å¾—æ›´å¥½çš„æ£€æµ‹æ•ˆæœ
         """)
         
-        # °ó¶¨ÊÂ¼ş
+        # ç»‘å®šäº‹ä»¶
         detect_btn.click(
             fn=partial(run_detection, runner),
             inputs=[input_image, input_text, max_num_boxes, score_thr, nms_thr],
@@ -326,7 +326,7 @@ def create_enhanced_ui(runner):
 def main():
     args = parse_args()
 
-    # ¼ÓÔØÅäÖÃ
+    # åŠ è½½é…ç½®
     cfg = Config.fromfile(args.config)
     if args.cfg_options is not None:
         cfg.merge_from_dict(args.cfg_options)
@@ -339,7 +339,7 @@ def main():
 
     cfg.load_from = args.checkpoint
 
-    # ³õÊ¼»¯Ä£ĞÍ
+    # åˆå§‹åŒ–æ¨¡å‹
     if 'runner_type' not in cfg:
         runner = Runner.from_cfg(cfg)
     else:
@@ -352,10 +352,10 @@ def main():
     runner.pipeline = Compose(pipeline)
     runner.model.eval()
 
-    print("? Ä£ĞÍ¼ÓÔØÍê³É£¡")
-    print(f"?? Æô¶¯UI½çÃæ£¬¶Ë¿Ú: {args.port}")
+    print("? æ¨¡å‹åŠ è½½å®Œæˆï¼")
+    print(f" å¯åŠ¨UIç•Œé¢ï¼Œç«¯å£: {args.port}")
 
-    # ´´½¨²¢Æô¶¯UI
+    # åˆ›å»ºå¹¶å¯åŠ¨UI
     demo = create_enhanced_ui(runner)
     demo.launch(
         server_name='0.0.0.0',
